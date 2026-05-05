@@ -1552,6 +1552,20 @@
     });
   }
 
+  function getFieldSortValue(doc) {
+    const data = doc.data() || {};
+    const candidates = [data.createdAt, data.updatedAt, data.clientCreatedAt];
+    for (const value of candidates) {
+      if (!value) continue;
+      if (typeof value.toMillis === 'function') return value.toMillis();
+      if (typeof value.seconds === 'number') return value.seconds * 1000 + Math.floor((value.nanoseconds || 0) / 1000000);
+      if (typeof value === 'number') return value;
+      const parsed = Date.parse(value);
+      if (!Number.isNaN(parsed)) return parsed;
+    }
+    return 0;
+  }
+
   function renderFieldEntries(docs) {
     const container = document.getElementById('field-entries');
     if (!container) return;
@@ -1559,8 +1573,15 @@
     const existing = new Map();
     container.querySelectorAll('.field-entry').forEach(div => existing.set(div.dataset.id, div));
 
+    const orderedDocs = [...docs].sort((a, b) => {
+      const av = getFieldSortValue(a);
+      const bv = getFieldSortValue(b);
+      if (av !== bv) return av - bv;
+      return a.id.localeCompare(b.id);
+    });
+
     const seen = new Set();
-    docs.forEach((doc) => {
+    orderedDocs.forEach((doc) => {
       const id = doc.id;
       const data = getFieldDataFromDoc(doc);
       let div = existing.get(id);
@@ -1698,7 +1719,6 @@
     if (CONFIG_READY && db) {
       setFbStatus(true, '🟢 Sincronización en tiempo real activa · verás las modificaciones de otros aquí');
       fieldUnsub = db.collection(FIELD_COLLECTION)
-        .orderBy('createdAt', 'asc')
         .onSnapshot(snapshot => {
           renderFieldEntries(snapshot.docs);
         }, err => {
