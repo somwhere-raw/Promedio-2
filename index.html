@@ -1478,7 +1478,7 @@
     div.innerHTML = `
       <div class="field-entry-header">
         <span class="field-entry-title">Entrada #?</span>
-        <button class="delete-btn" title="Eliminar entrada" onclick="deleteEntry(this)">×</button>
+        <button type="button" class="delete-btn" title="Eliminar entrada" onclick="deleteEntry(this)">×</button>
       </div>
       <label class="field-label">Pregunta realizada</label>
       <input  class="field-control fc-pregunta"     type="text" placeholder="¿Cuál fue la pregunta o tema abordado?" value="${esc(data.pregunta)}">
