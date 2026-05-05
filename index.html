@@ -1709,7 +1709,7 @@
     }
 
     if (CONFIG_READY && db) {
-      setFbStatus(true, 'Sincronización en tiempo real activa - verás las modificaciones de otros aquí');
+      setFbStatus(true, 'Sincronización en tiempo real activa - Verás las modificaciones de otros aquí');
       fieldUnsub = db.collection(FIELD_COLLECTION)
         .onSnapshot(snapshot => {
           renderFieldEntries(snapshot.docs);
