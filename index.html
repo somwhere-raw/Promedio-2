@@ -1615,15 +1615,16 @@
             const batch = db.batch();
             snap.docs.forEach(d => batch.delete(d.ref));
             await batch.commit();
-            showSyncDot('ok');
+            // El listener soltará el bloqueo únicamente cuando la colección quede vacía.
           } catch(e) {
             console.error('resetField error:', e);
             showSyncDot('error');
+            _resetting = false;
           }
         } else {
           try { localStorage.removeItem(FIELD_LS_KEY); } catch {}
+          _resetting = false;
         }
-        _resetting = false;
       }
     );
   }
@@ -1633,7 +1634,13 @@
     if (!CONFIG_READY || !db) { loadLocalFallback(); return; }
 
     db.collection('entries').orderBy('order').onSnapshot(snapshot => {
-      if (_resetting) return; // bloquear mientras se resetea
+      if (_resetting) {
+        if (snapshot.docs.length === 0) {
+          _resetting = false;
+          showSyncDot('ok');
+        }
+        return; // bloquear mientras se resetea
+      }
 
       const container   = document.getElementById('field-entries');
       const existingIds = new Set([...container.querySelectorAll('.field-entry')].map(d => d.dataset.id));
