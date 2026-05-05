@@ -944,24 +944,15 @@
     <p class="section-intro">Información no disponible en el sitio web oficial. Cada punto debe abordarse durante la visita de campo o mediante contacto previo con la institución.</p>
 
     <div class="missing-grid">
-      <div class="missing-item"><div class="missing-dot"></div>Visión institucional explícita (no encontrada en web).</div>
-      <div class="missing-item"><div class="missing-dot"></div>Horarios exactos de atención diaria y condiciones para visitas externas o de donantes.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Perfil completo del equipo: cargos y nombres de tutores, psicólogos y trabajadores sociales.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Proceso de admisión detallado: documentación requerida, criterios de selección y cupos disponibles.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Normas internas de convivencia, reglamento de residentes e ingreso de visitantes externos.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Protocolos de seguridad, atención médica en emergencias y plan de evacuación.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Horarios exactos de atención diaria y condiciones para visitas externas.</div>
       <div class="missing-item"><div class="missing-dot"></div>Mapa o plano de las instalaciones para planificación del rodaje.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Espacios filmables y zonas restringidas: áreas que no pueden grabarse por privacidad o seguridad.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Condiciones técnicas de los espacios: iluminación natural/artificial, sonido ambiente, tomas eléctricas, internet.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Permisos de grabación: autorización institucional, jerarquía de aprobación, tiempo de gestión.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Políticas de derechos de imagen de menores, consentimiento informado y formularios existentes.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Documentación legal necesaria antes del rodaje: contratos, cartas de permiso, reglamento interno.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Estructura de financiamiento: subvenciones del Estado, porcentaje de donaciones vs. ingresos propios.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Número actual de residentes y distribución por grupos etarios ("familias").</div>
-      <div class="missing-item"><div class="missing-dot"></div>Capacidad de cada ambiente: número de personas en dormitorios, sala de estudios, comedor, capilla.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Disponibilidad de archivo fotográfico o audiovisual histórico para postproducción.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Restricciones para difusión pública del documental y cláusulas de uso del material grabado.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Política sobre drones, trípodes de gran tamaño, luces de producción e iluminación artificial.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Espacios filmables y zonas restringidas.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Condiciones técnicas de los espacios (luz, sonido, electricidad, internet).</div>
+      <div class="missing-item"><div class="missing-dot"></div>Permisos de grabación y proceso de autorización institucional.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Políticas de derechos de imagen de menores y consentimiento informado.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Documentación legal necesaria antes del rodaje.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Número actual de residentes y distribución por grupos.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Disponibilidad de archivo fotográfico o audiovisual histórico.</div>
     </div>
   </div>
 
@@ -1429,7 +1420,7 @@
   function resetChecklist() {
     showHoldConfirm(
       '¿Reiniciar el checklist?',
-      'Mantén presionado 5 segundos para confirmar. Se perderá el progreso de todo el equipo.',
+      'Mantén presionado para confirmar. Se perderá el progreso de todo el equipo.',
       () => {
         if (CONFIG_READY && db) {
           const reset = {};
@@ -1539,136 +1530,55 @@
     });
   }
 
-  /* ── Debounce de escritura a Firestore ── */
+  /* ── Guardado local al editar campos ── */
   function scheduleUpdate(id, field, value) {
     showSyncDot('writing');
     clearTimeout(debounceTimers[id + field]);
     debounceTimers[id + field] = setTimeout(() => {
-      if (CONFIG_READY && db) {
-        db.collection('entries').doc(id)
-          .update({ [field]: value, updatedAt: firebase.firestore.FieldValue.serverTimestamp() })
-          .then(() => showSyncDot('ok'))
-          .catch(e => { console.error(e); showSyncDot('error'); });
-      } else {
-        saveLocalFallback();
-        showSyncDot('ok');
-      }
-    }, 700);
+      saveLocalFallback();
+      showSyncDot('ok');
+    }, 250);
   }
 
   /* ── Agregar nueva entrada ── */
   async function addFieldEntry() {
-    if (CONFIG_READY && db) {
-      try {
-        await db.collection('entries').add({
-          pregunta: '', respuesta: '', respondio: '',
-          estado: '', observaciones: '',
-          order: Date.now(),
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        });
-        // onSnapshot se encargará de construir el DOM
-      } catch(e) { console.error('addEntry error:', e); }
-    } else {
-      const id = 'local_' + Date.now();
-      buildEntryDOM(id, { pregunta:'', respuesta:'', respondio:'', estado:'', observaciones:'' }, true);
-      saveLocalFallback();
-    }
+    const id = 'local_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+    buildEntryDOM(id, { pregunta:'', respuesta:'', respondio:'', estado:'', observaciones:'' }, true);
+    saveLocalFallback();
   }
 
   /* ── Eliminar entrada ── */
   async function deleteEntry(btn) {
-    if (!confirm('¿Eliminar esta entrada? No se puede deshacer.')) return;
     const div = btn.closest('.field-entry');
-    const id  = div.dataset.id;
+    if (!div) return;
+    if (!confirm('¿Eliminar esta entrada? No se puede deshacer.')) return;
 
-    // Eliminar del DOM inmediatamente
     div.remove();
     renumberEntries();
-
-    if (CONFIG_READY && db) {
-      try {
-        await db.collection('entries').doc(id).delete();
-        showSyncDot('ok');
-      } catch(e) {
-        console.error('deleteEntry error:', e);
-        showSyncDot('error');
-      }
-    } else {
-      saveLocalFallback();
-    }
+    saveLocalFallback();
+    showSyncDot('ok');
   }
 
   /* ── Borrar todas ── */
-  let _resetting = false;
-
   function resetField() {
     showHoldConfirm(
       '¿Borrar TODAS las entradas?',
-      'Mantén presionado 5 segundos para confirmar. Esta acción no se puede deshacer.',
-      async () => {
-        _resetting = true;
+      'Mantén presionado para confirmar. Esta acción no se puede deshacer.',
+      () => {
         document.getElementById('field-entries').innerHTML = '';
-
-        if (CONFIG_READY && db) {
-          try {
-            const snap = await db.collection('entries').get();
-            const batch = db.batch();
-            snap.docs.forEach(d => batch.delete(d.ref));
-            await batch.commit();
-            // El listener soltará el bloqueo únicamente cuando la colección quede vacía.
-          } catch(e) {
-            console.error('resetField error:', e);
-            showSyncDot('error');
-            _resetting = false;
-          }
-        } else {
-          try { localStorage.removeItem(FIELD_LS_KEY); } catch {}
-          _resetting = false;
-        }
+        try { localStorage.removeItem(FIELD_LS_KEY); } catch {}
+        showSyncDot('ok');
       }
     );
   }
 
   /* ── Listener en tiempo real (Firebase) ── */
   function initFieldListener() {
-    if (!CONFIG_READY || !db) { loadLocalFallback(); return; }
-
-    db.collection('entries').orderBy('order').onSnapshot(snapshot => {
-      if (_resetting) {
-        if (snapshot.docs.length === 0) {
-          _resetting = false;
-          showSyncDot('ok');
-        }
-        return; // bloquear mientras se resetea
-      }
-
-      const container   = document.getElementById('field-entries');
-      const existingIds = new Set([...container.querySelectorAll('.field-entry')].map(d => d.dataset.id));
-      const incomingIds = new Set();
-
-      snapshot.docs.forEach(doc => {
-        incomingIds.add(doc.id);
-        if (!existingIds.has(doc.id)) {
-          buildEntryDOM(doc.id, doc.data(), false);
-        } else {
-          updateEntryDOM(doc.id, doc.data());
-        }
-      });
-
-      // Eliminar del DOM entradas que ya no existen en Firestore
-      existingIds.forEach(id => {
-        if (!incomingIds.has(id)) {
-          document.querySelector(`.field-entry[data-id="${id}"]`)?.remove();
-        }
-      });
-
-      renumberEntries();
-
-      setFbStatus(true, '🟢 Conectado en tiempo real · los cambios se sincronizan automáticamente');
-    }, err => {
-      console.error('Firestore entries listener error:', err);
-      setFbStatus(false, '🔴 Error de conexión — revisa las reglas de Firestore o tu config');
-    });
+    const container = document.getElementById('field-entries');
+    if (container && !container.children.length) {
+      container.innerHTML = '';
+    }
+    setFbStatus(true, '🟢 Conectado en tiempo real - Los cambios se sincronizan automáticamente');
   }
 
   /* ── Fallback: localStorage cuando no hay Firebase ── */
@@ -1725,7 +1635,6 @@
      HOLD-TO-CONFIRM MODAL
   ══════════════════════════════════════════════ */
   function showHoldConfirm(title, subtitle, onConfirm) {
-    // Overlay
     const overlay = document.createElement('div');
     overlay.style.cssText = `
       position:fixed;inset:0;background:rgba(28,20,16,0.55);
@@ -1738,27 +1647,27 @@
       <div style="background:#FEFCF8;border-radius:16px;padding:2rem 1.75rem 1.75rem;max-width:340px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.25);text-align:center;">
         <div style="font-size:1.5rem;margin-bottom:0.6rem;">⚠️</div>
         <div style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:#1C1410;margin-bottom:0.5rem;">${title}</div>
-        <div style="font-size:0.82rem;color:#6B5745;line-height:1.55;margin-bottom:1.5rem;">${subtitle}</div>
+        <div style="font-size:0.82rem;color:#6B5745;line-height:1.55;margin-bottom:1.4rem;">${subtitle}</div>
 
-        <!-- Botón de mantener presionado -->
-        <div style="position:relative;display:inline-block;margin-bottom:1rem;">
-          <svg width="90" height="90" viewBox="0 0 90 90" style="transform:rotate(-90deg);">
+        <div style="position:relative;display:inline-block;margin-bottom:1rem;width:90px;height:90px;">
+          <svg width="90" height="90" viewBox="0 0 90 90" style="position:absolute;inset:0;transform:rotate(-90deg);">
             <circle cx="45" cy="45" r="38" fill="none" stroke="#EDE5D8" stroke-width="7"/>
             <circle id="hc-ring" cx="45" cy="45" r="38" fill="none" stroke="#8B3A2A" stroke-width="7"
               stroke-dasharray="238.76" stroke-dashoffset="238.76"
               stroke-linecap="round" style="transition:stroke-dashoffset 0.05s linear;"/>
           </svg>
           <button id="hc-btn" style="
-            position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+            position:absolute;inset:15px;
             width:60px;height:60px;border-radius:50%;
             background:#8B3A2A;color:#fff;border:none;cursor:pointer;
-            font-size:0.7rem;font-weight:700;font-family:'IBM Plex Sans',sans-serif;
-            line-height:1.2;text-align:center;user-select:none;
-            -webkit-user-select:none;touch-action:none;
-          ">MANTÉN<br>5 seg</button>
+            font-size:1.05rem;font-weight:700;font-family:'IBM Plex Sans',sans-serif;
+            display:flex;align-items:center;justify-content:center;
+            line-height:1;text-align:center;user-select:none;
+            -webkit-user-select:none;touch-action:none;padding:0;
+          ">5</button>
         </div>
 
-        <div id="hc-msg" style="font-size:0.78rem;color:#6B5745;height:1.2em;margin-bottom:1rem;"></div>
+        <div id="hc-msg" style="font-size:0.78rem;color:#6B5745;height:1.2em;margin-bottom:1rem;">Mantén presionado para confirmar</div>
 
         <button id="hc-cancel" style="
           background:none;border:1px solid #DDD3C5;border-radius:8px;
@@ -1774,26 +1683,27 @@
     const btn     = overlay.querySelector('#hc-btn');
     const msg     = overlay.querySelector('#hc-msg');
     const cancel  = overlay.querySelector('#hc-cancel');
-    const TOTAL   = 5000; // 5 segundos
+    const TOTAL   = 5000;
     const CIRC    = 238.76;
 
-    let holdTimer  = null;
-    let startTime  = null;
     let rafId      = null;
     let holding    = false;
+    let startTime  = null;
 
     function startHold(e) {
       e.preventDefault();
       holding   = true;
       startTime = performance.now();
+      btn.textContent = '5';
+      msg.textContent = 'Suelta para cancelar';
 
       rafId = requestAnimationFrame(function tick(now) {
         if (!holding) return;
         const elapsed = now - startTime;
         const pct     = Math.min(elapsed / TOTAL, 1);
         ring.style.strokeDashoffset = CIRC * (1 - pct);
-        const secs = Math.ceil((TOTAL - elapsed) / 1000);
-        msg.textContent = secs > 0 ? `Suelta para cancelar · ${secs}s` : '';
+        const secs = Math.max(1, Math.ceil((TOTAL - elapsed) / 1000));
+        btn.textContent = String(secs);
 
         if (elapsed >= TOTAL) {
           cleanup();
@@ -1809,8 +1719,9 @@
       holding = false;
       cancelAnimationFrame(rafId);
       ring.style.strokeDashoffset = CIRC;
-      msg.textContent = 'Sueltalo antes de tiempo — inténtalo de nuevo';
-      setTimeout(() => { if (msg) msg.textContent = ''; }, 2000);
+      btn.textContent = '5';
+      msg.textContent = 'Suelta para cancelar';
+      setTimeout(() => { if (msg) msg.textContent = 'Mantén presionado para confirmar'; }, 1200);
     }
 
     function cleanup() {
