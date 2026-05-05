@@ -944,15 +944,24 @@
     <p class="section-intro">Información no disponible en el sitio web oficial. Cada punto debe abordarse durante la visita de campo o mediante contacto previo con la institución.</p>
 
     <div class="missing-grid">
-      <div class="missing-item"><div class="missing-dot"></div>Horarios exactos de atención diaria y condiciones para visitas externas.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Visión institucional explícita (no encontrada en web).</div>
+      <div class="missing-item"><div class="missing-dot"></div>Horarios exactos de atención diaria y condiciones para visitas externas o de donantes.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Perfil completo del equipo: cargos y nombres de tutores, psicólogos y trabajadores sociales.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Proceso de admisión detallado: documentación requerida, criterios de selección y cupos disponibles.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Normas internas de convivencia, reglamento de residentes e ingreso de visitantes externos.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Protocolos de seguridad, atención médica en emergencias y plan de evacuación.</div>
       <div class="missing-item"><div class="missing-dot"></div>Mapa o plano de las instalaciones para planificación del rodaje.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Espacios filmables y zonas restringidas.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Condiciones técnicas de los espacios (luz, sonido, electricidad, internet).</div>
-      <div class="missing-item"><div class="missing-dot"></div>Permisos de grabación y proceso de autorización institucional.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Políticas de derechos de imagen de menores y consentimiento informado.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Documentación legal necesaria antes del rodaje.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Número actual de residentes y distribución por grupos.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Disponibilidad de archivo fotográfico o audiovisual histórico.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Espacios filmables y zonas restringidas: áreas que no pueden grabarse por privacidad o seguridad.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Condiciones técnicas de los espacios: iluminación natural/artificial, sonido ambiente, tomas eléctricas, internet.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Permisos de grabación: autorización institucional, jerarquía de aprobación, tiempo de gestión.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Políticas de derechos de imagen de menores, consentimiento informado y formularios existentes.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Documentación legal necesaria antes del rodaje: contratos, cartas de permiso, reglamento interno.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Estructura de financiamiento: subvenciones del Estado, porcentaje de donaciones vs. ingresos propios.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Número actual de residentes y distribución por grupos etarios ("familias").</div>
+      <div class="missing-item"><div class="missing-dot"></div>Capacidad de cada ambiente: número de personas en dormitorios, sala de estudios, comedor, capilla.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Disponibilidad de archivo fotográfico o audiovisual histórico para postproducción.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Restricciones para difusión pública del documental y cláusulas de uso del material grabado.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Política sobre drones, trípodes de gran tamaño, luces de producción e iluminación artificial.</div>
     </div>
   </div>
 
@@ -1450,10 +1459,12 @@
   }
 
   /* ══════════════════════════════════════════════
-     CAMPO — Firebase (con fallback a localStorage)
+     CAMPO — Firestore en tiempo real (con fallback local)
   ══════════════════════════════════════════════ */
   const FIELD_LS_KEY = 'cdnField_v1';
+  const FIELD_COLLECTION = 'fieldEntries';
   const debounceTimers = {};
+  let fieldUnsub = null;
 
   function esc(str) {
     return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -1518,6 +1529,17 @@
     return div;
   }
 
+  function getFieldDataFromDoc(doc) {
+    const data = doc.data() || {};
+    return {
+      pregunta: data.pregunta || '',
+      respuesta: data.respuesta || '',
+      respondio: data.respondio || '',
+      estado: data.estado || '',
+      observaciones: data.observaciones || ''
+    };
+  }
+
   /* ── Actualizar tarjeta existente sin pisar el foco ── */
   function updateEntryDOM(id, data) {
     const div = document.querySelector(`.field-entry[data-id="${id}"]`);
@@ -1530,18 +1552,82 @@
     });
   }
 
+  function renderFieldEntries(docs) {
+    const container = document.getElementById('field-entries');
+    if (!container) return;
+
+    const existing = new Map();
+    container.querySelectorAll('.field-entry').forEach(div => existing.set(div.dataset.id, div));
+
+    const seen = new Set();
+    docs.forEach((doc) => {
+      const id = doc.id;
+      const data = getFieldDataFromDoc(doc);
+      let div = existing.get(id);
+      if (!div) {
+        div = buildEntryDOM(id, data, false);
+      } else {
+        updateEntryDOM(id, data);
+      }
+      container.appendChild(div);
+      seen.add(id);
+    });
+
+    existing.forEach((div, id) => {
+      if (!seen.has(id)) div.remove();
+    });
+
+    renumberEntries();
+  }
+
   /* ── Guardado local al editar campos ── */
   function scheduleUpdate(id, field, value) {
-    showSyncDot('writing');
     clearTimeout(debounceTimers[id + field]);
-    debounceTimers[id + field] = setTimeout(() => {
-      saveLocalFallback();
-      showSyncDot('ok');
+    debounceTimers[id + field] = setTimeout(async () => {
+      if (CONFIG_READY && db) {
+        try {
+          showSyncDot('writing');
+          await db.collection(FIELD_COLLECTION).doc(id).set({
+            [field]: value,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+          showSyncDot('ok');
+        } catch (e) {
+          console.error('Firestore field update error:', e);
+          showSyncDot('error');
+        }
+      } else {
+        saveLocalFallback();
+        showSyncDot('ok');
+      }
     }, 250);
   }
 
   /* ── Agregar nueva entrada ── */
   async function addFieldEntry() {
+    if (CONFIG_READY && db) {
+      try {
+        showSyncDot('writing');
+        const ref = await db.collection(FIELD_COLLECTION).add({
+          pregunta: '',
+          respuesta: '',
+          respondio: '',
+          estado: '',
+          observaciones: '',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        setTimeout(() => {
+          const div = document.querySelector(`.field-entry[data-id="${ref.id}"]`);
+          if (div) div.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 250);
+      } catch (e) {
+        console.error('Firestore add error:', e);
+        showSyncDot('error');
+      }
+      return;
+    }
+
     const id = 'local_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
     buildEntryDOM(id, { pregunta:'', respuesta:'', respondio:'', estado:'', observaciones:'' }, true);
     saveLocalFallback();
@@ -1552,6 +1638,19 @@
     const div = btn.closest('.field-entry');
     if (!div) return;
     if (!confirm('¿Eliminar esta entrada? No se puede deshacer.')) return;
+
+    const id = div.dataset.id;
+    if (CONFIG_READY && db) {
+      try {
+        showSyncDot('writing');
+        await db.collection(FIELD_COLLECTION).doc(id).delete();
+        showSyncDot('ok');
+      } catch (e) {
+        console.error('Firestore delete error:', e);
+        showSyncDot('error');
+      }
+      return;
+    }
 
     div.remove();
     renumberEntries();
@@ -1564,10 +1663,24 @@
     showHoldConfirm(
       '¿Borrar TODAS las entradas?',
       'Mantén presionado para confirmar. Esta acción no se puede deshacer.',
-      () => {
-        document.getElementById('field-entries').innerHTML = '';
-        try { localStorage.removeItem(FIELD_LS_KEY); } catch {}
-        showSyncDot('ok');
+      async () => {
+        const container = document.getElementById('field-entries');
+        if (CONFIG_READY && db) {
+          try {
+            const snap = await db.collection(FIELD_COLLECTION).get();
+            const batch = db.batch();
+            snap.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+            showSyncDot('ok');
+          } catch (e) {
+            console.error('Firestore reset error:', e);
+            showSyncDot('error');
+          }
+        } else {
+          container.innerHTML = '';
+          try { localStorage.removeItem(FIELD_LS_KEY); } catch {}
+          showSyncDot('ok');
+        }
       }
     );
   }
@@ -1575,10 +1688,29 @@
   /* ── Listener en tiempo real (Firebase) ── */
   function initFieldListener() {
     const container = document.getElementById('field-entries');
-    if (container && !container.children.length) {
-      container.innerHTML = '';
+    if (!container) return;
+
+    if (fieldUnsub) {
+      try { fieldUnsub(); } catch {}
+      fieldUnsub = null;
     }
-    setFbStatus(true, '🟢 Conectado en tiempo real - Los cambios se sincronizan automáticamente');
+
+    if (CONFIG_READY && db) {
+      setFbStatus(true, '🟢 Sincronización en tiempo real activa · verás las modificaciones de otros aquí');
+      fieldUnsub = db.collection(FIELD_COLLECTION)
+        .orderBy('createdAt', 'asc')
+        .onSnapshot(snapshot => {
+          renderFieldEntries(snapshot.docs);
+        }, err => {
+          console.error('Field listener error:', err);
+          setFbStatus(false, '⚠️ Error de sincronización · usando modo local');
+          loadLocalFallback();
+        });
+      return;
+    }
+
+    setFbStatus(false, '🟠 Sin Firebase · modo local');
+    loadLocalFallback();
   }
 
   /* ── Fallback: localStorage cuando no hay Firebase ── */
