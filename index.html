@@ -945,23 +945,14 @@
 
     <div class="missing-grid">
       <div class="missing-item"><div class="missing-dot"></div>Visión institucional explícita (no encontrada en web).</div>
-      <div class="missing-item"><div class="missing-dot"></div>Horarios exactos de atención diaria y condiciones para visitas externas o de donantes.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Perfil completo del equipo: cargos y nombres de tutores, psicólogos y trabajadores sociales.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Proceso de admisión detallado: documentación requerida, criterios de selección y cupos disponibles.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Normas internas de convivencia, reglamento de residentes e ingreso de visitantes externos.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Protocolos de seguridad, atención médica en emergencias y plan de evacuación.</div>
       <div class="missing-item"><div class="missing-dot"></div>Mapa o plano de las instalaciones para planificación del rodaje.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Espacios filmables y zonas restringidas: áreas que no pueden grabarse por privacidad o seguridad.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Condiciones técnicas de los espacios: iluminación natural/artificial, sonido ambiente, tomas eléctricas, internet.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Permisos de grabación: autorización institucional, jerarquía de aprobación, tiempo de gestión.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Políticas de derechos de imagen de menores, consentimiento informado y formularios existentes.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Documentación legal necesaria antes del rodaje: contratos, cartas de permiso, reglamento interno.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Estructura de financiamiento: subvenciones del Estado, porcentaje de donaciones vs. ingresos propios.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Número actual de residentes y distribución por grupos etarios ("familias").</div>
-      <div class="missing-item"><div class="missing-dot"></div>Capacidad de cada ambiente: número de personas en dormitorios, sala de estudios, comedor, capilla.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Disponibilidad de archivo fotográfico o audiovisual histórico para postproducción.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Restricciones para difusión pública del documental y cláusulas de uso del material grabado.</div>
-      <div class="missing-item"><div class="missing-dot"></div>Política sobre drones, trípodes de gran tamaño, luces de producción e iluminación artificial.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Espacios filmables y zonas restringidas.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Condiciones técnicas de los espacios (luz, sonido, electricidad, internet).</div>
+      <div class="missing-item"><div class="missing-dot"></div>Permisos de grabación y proceso de autorización institucional.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Políticas de derechos de imagen de menores y consentimiento informado.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Documentación legal necesaria antes del rodaje.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Número actual de residentes y distribución por grupos.</div>
+      <div class="missing-item"><div class="missing-dot"></div>Disponibilidad de archivo fotográfico o audiovisual histórico.</div>
     </div>
   </div>
 
@@ -1717,7 +1708,7 @@
     }
 
     if (CONFIG_READY && db) {
-      setFbStatus(true, '🟢 Sincronización en tiempo real activa · verás las modificaciones de otros aquí');
+      setFbStatus(true, 'Sincronización en tiempo real activa - verás las modificaciones de otros aquí');
       fieldUnsub = db.collection(FIELD_COLLECTION)
         .onSnapshot(snapshot => {
           renderFieldEntries(snapshot.docs);
